@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model earthquake {
+  id          String   @id @default(cuid())
+  apiId       String   @unique              // ID unique fourni par l'API USGS
+  magnitude   Float
+  place       String
+  time        DateTime // Moment où le séisme a eu lieu
+  updated     DateTime // Dernière mise à jour des données de l'API
+  detailUrl   String
+  coordinates String   // Coordonnées sous forme de chaîne "longitude,latitude,depth"
+
+  createdAt   DateTime @default(now()) // Date d'insertion dans la base
+  updatedAt   DateTime @updatedAt      // Dernière mise à jour dans la base
+}
