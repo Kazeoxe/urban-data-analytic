@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    container_name: nyc_pgdb
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: nyc-urban-data
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - local_pgdata:/var/lib/postgresql/data
+    networks:
+      - dev
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: nyc-pgadmin4
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: 1234
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - dev
+
+volumes:
+  local_pgdata:
+  pgadmin-data:
+
+networks:
+  dev:
