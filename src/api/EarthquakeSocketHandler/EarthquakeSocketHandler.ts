@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const UPDATE_INTERVAL = 60000; // 1 minute
 
-const EarthquakeSocketHandler = (req, res) => {
+const EarthquakeSocketHandler = (req: any, res: any) => {
     if (res.socket.server.io) {
         return res.end();
     }
@@ -30,7 +30,7 @@ const EarthquakeSocketHandler = (req, res) => {
         }
     };
 
-    const saveEarthquakesToDB = async (earthquakes) => {
+    const saveEarthquakesToDB = async (earthquakes: any) => {
         const newEarthquakes = [];
 
         for (const earthquake of earthquakes) {
