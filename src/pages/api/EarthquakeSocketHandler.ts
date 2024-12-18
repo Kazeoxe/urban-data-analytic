@@ -73,13 +73,12 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
             const earthquakeData = await fetchEarthquakeAPI();
             const newEarthquakes = await saveEarthquakesToDB(earthquakeData);
 
-            console.log(newEarthquakes);
+            console.log("data", earthquakeData);
+            console.log("new", newEarthquakes);
 
-            const allEarthquakes = await prisma.earthquake.findMany({
-                orderBy: { time: 'desc' },
+            const allEarthquakes = prisma.earthquake.findMany({
+                orderBy: {time: 'desc'},
             });
-
-            console.log(allEarthquakes);
 
             socket.emit('data-update', { newEarthquakes, allEarthquakes });
         };
