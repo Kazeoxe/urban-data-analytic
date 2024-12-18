@@ -6,6 +6,7 @@ import { MapboxAccessToken, theme } from "../components/const";
 import dynamic from "next/dynamic";
 import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBox";
 import { useLayerAndSource } from "./use-layer-and-source";
+import DrawerComponent from "./DrawerComponent";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
@@ -68,13 +69,15 @@ const Map = () => {
   return (
     <div style={{ height: "100vh", width: "100%" }}>
       <div ref={mapContainer} style={{ height: "100%", width: "100%" }} />
-      <div style={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}>
-        <SearchBox
-          accessToken={MapboxAccessToken}
-          placeholder="Rechercher un lieu..."
-          theme={theme}
-          onRetrieve={handleAddressSelect}
-        />
+      <div style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}>
+        <DrawerComponent>
+          <SearchBox
+            accessToken={MapboxAccessToken}
+            placeholder="Rechercher un lieu..."
+            theme={theme}
+            onRetrieve={handleAddressSelect}
+          />
+        </DrawerComponent>
       </div>
     </div>
   );

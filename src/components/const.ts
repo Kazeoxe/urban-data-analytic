@@ -5,7 +5,7 @@ export const MapboxAccessToken =
 
 export const theme = {
   variables: {
-    minWidth: "100%",
+    minWidth: "80%",
     border: "none",
     boxShadow: "none",
   },
@@ -16,12 +16,14 @@ export const theme = {
         .Input,
         .Input:focus,
         .SearchBox {
+            width: 85%;
+            margin-left: 7.5%;
             border-radius: 20px;
             padding: 0 24px;
-            line-height: 50px;
+            line-height: 30px;
             border: none;
             font-size: 14px;
-            border-radius: 30px;
+            border-radius: 20px;
           }
           .Results,
           .SearchBox {
