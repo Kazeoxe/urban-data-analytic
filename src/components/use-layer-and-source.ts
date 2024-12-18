@@ -36,7 +36,7 @@ export const useLayerAndSource = () => {
       source: "earthquake",
       paint: {
         "circle-radius": 6,
-        "circle-color": "#ff5722",
+        "circle-color": "green",
       },
     },
   ];
