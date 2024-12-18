@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" suppressHydrationWarning>
       <body className={`${round8four.variable} antialiased overflow-hidden`}>
         <Provider>
-          {/* <LoaderComponent />
+          <LoaderComponent />
           <div id="counter-container" className="text-[380px] fixed w-full h-full flex justify-end z-50 text-white py-1 px-2 pr-11 items-end overflow-hidden">
             <p className="counter font-round8four flex">0</p>
           </div>
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {[...Array(10)].map((_, index) => (
               <div key={index} className="w-[10vw] h-[105vh] bg-[red] bar" />
             ))}
-          </div> */}
+          </div>
           <main>{children}</main>
         </Provider>
       </body>
