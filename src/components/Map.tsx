@@ -5,6 +5,7 @@ import { SearchBoxRetrieveResponse } from "@mapbox/search-js-core";
 import { MapboxAccessToken, theme } from "../components/const";
 import dynamic from "next/dynamic";
 import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBox";
+import { useLayerAndSource } from "./use-layer-and-source";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
@@ -20,6 +21,8 @@ const Map = () => {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
 
+  const { sources, layers } = useLayerAndSource();
+
   useEffect(() => {
     if (mapContainer.current) {
       mapboxgl.accessToken = MapboxAccessToken;
@@ -34,7 +37,16 @@ const Map = () => {
 
       return () => map.remove();
     }
-  }, [selectedAddressPoint]);
+  }, []);
+
+  useEffect(() => {
+    mapRef.current?.on("load", () => {
+      if (mapRef.current && sources.get("earthquake")) {
+        mapRef.current.addSource("earthquake", sources.get("earthquake")!);
+        mapRef.current.addLayer(layers[0]);
+      }
+    });
+  }, [sources, layers, selectedAddressPoint]);
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
