@@ -5,6 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const UPDATE_INTERVAL = 60000; // 1 minute
+const DATABASE_UPDATE_INTERVAL = 15;
 
 const EarthquakeSocketHandler = (req: any, res: any) => {
     if (res.socket.server.io) {
@@ -13,11 +14,13 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
 
     const io = new Server(res.socket.server);
     res.socket.server.io = io;
+    
+    const now = new Date();
+    const dateToFetch = new Date(now.getTime() - DATABASE_UPDATE_INTERVAL * 60 * 1000).toISOString();
 
     const fetchEarthquakeAPI = async () => {
         try {
-            const now = new Date();
-            const startTime = new Date(now.getTime() - 5 * 60 * 1000).toISOString(); // 5 minutes avant
+            const startTime = dateToFetch; // 5 minutes avant
             const endTime = now.toISOString();
 
             const apiUrl = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&endtime=${endTime}`;
@@ -43,27 +46,31 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
             const [longitude, latitude, depth] = coordinates;
 
             // Vérifiez si ce séisme existe déjà en base grâce à son ID unique
-            const existingEarthquake = await prisma.earthquake.findUnique({
+            const savedEarthquake = await prisma.earthquake.findUnique({
                 where: { apiId: id },
-            });
-
-            if (!existingEarthquake) {
-                const newEarthquake = await prisma.earthquake.create({
-                    data: {
-                        apiId : id,
-                        magnitude: mag,
-                        place,
-                        time: new Date(time),
-                        updated: new Date(updated),
-                        detailUrl: detail,
-                        coordinates: `${longitude},${latitude},${depth}`,
-                    },
-                });
-                newEarthquakes.push(newEarthquake);
+                update: {
+                  magnitude: mag,
+                  place,
+                  time: new Date(time),
+                  updated: new Date(updated),
+                  detailUrl: detail,
+                  coordinates: `${longitude},${latitude},${depth}`,
+                },
+                create: {
+                  apiId: id,
+                  magnitude: mag,
+                  place,
+                  time: new Date(time),
+                  updated: new Date(updated),
+                  detailUrl: detail,
+                  coordinates: `${longitude},${latitude},${depth}`,
+                },
+              });
+        
+              newEarthquakes.push(savedEarthquake);
             }
-        }
-
-        return newEarthquakes;
+        
+            return newEarthquakes;
     };
 
     io.on('connection', (socket) => {
@@ -78,6 +85,7 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
 
             const allEarthquakes = prisma.earthquake.findMany({
                 orderBy: {time: 'desc'},
+                take: 1000, // Limite raisonnable
             });
 
             socket.emit('data-update', { newEarthquakes, allEarthquakes });
