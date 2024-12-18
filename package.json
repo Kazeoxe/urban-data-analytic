@@ -12,19 +12,15 @@
     "@chakra-ui/react": "^3.2.3",
     "@emotion/react": "^11.14.0",
     "@mapbox/search-js-react": "^1.0.0-beta.24",
-    "@prisma/client": "^6.0.1",
-    "axios": "^1.7.9",
-    "gsap": "^3.12.5",
     "mapbox-gl": "^3.8.0",
     "next": "15.1.0",
     "next-themes": "^0.4.4",
-    "pg": "^8.13.1",
-    "prisma": "^6.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-icons": "^5.4.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "urban-data-analytic": "file:"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
