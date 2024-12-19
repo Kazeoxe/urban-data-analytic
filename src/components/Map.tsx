@@ -9,17 +9,22 @@ import { useLayerAndSource } from "./use-layer-and-source";
 import DrawerComponent from "./DrawerComponent";
 import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
+import { EarthquakeType } from "@/utils/earthquakeType";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
-  () =>
-    import("@mapbox/search-js-react").then(
-      (mod) => mod.SearchBox as React.ComponentType<SearchBoxProps>
-    ),
-  { ssr: false }
+    () =>
+        import("@mapbox/search-js-react").then(
+            (mod) => mod.SearchBox as React.ComponentType<SearchBoxProps>
+        ),
+    { ssr: false }
 );
 
-const Map = () => {
+type MapProps = {
+  earthquakes: EarthquakeType[];
+};
+
+const Map = ({ earthquakes }: MapProps) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
@@ -29,7 +34,7 @@ const Map = () => {
     place: "",
   });
 
-  const { sources, layers } = useLayerAndSource();
+  const { sources, layers } = useLayerAndSource(earthquakes);
 
   useEffect(() => {
     if (mapContainer.current) {
@@ -48,13 +53,34 @@ const Map = () => {
   }, []);
 
   useEffect(() => {
-    mapRef.current?.on("load", () => {
-      if (mapRef.current && sources.get("earthquake")) {
-        mapRef.current.addSource("earthquake", sources.get("earthquake")!);
-        mapRef.current.addLayer(layers[0]);
+    if (mapRef.current) {
+      const onLoad = () => {
+        if (!mapRef.current.getSource("earthquake")) {
+          // Ajouter la source si elle n'existe pas encore
+          mapRef.current.addSource("earthquake", sources.get("earthquake")!);
+        } else {
+          // Mettre à jour les données de la source existante
+          const source = mapRef.current.getSource("earthquake") as mapboxgl.GeoJSONSource;
+          source.setData(sources.get("earthquake")!.data);
+        }
+
+        // Ajouter la couche seulement si elle n'existe pas
+        if (!mapRef.current.getLayer(layers[0].id)) {
+          mapRef.current.addLayer(layers[0]);
+        }
+      };
+
+      if (mapRef.current.isStyleLoaded()) {
+        onLoad(); // Exécute directement si le style est chargé
+      } else {
+        mapRef.current.on("load", onLoad); // Sinon, attends que la carte soit chargée
       }
-    });
-  }, [sources, layers, selectedAddressPoint]);
+
+      return () => {
+        mapRef.current?.off("load", onLoad);
+      };
+    }
+  }, [sources, layers]);
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
