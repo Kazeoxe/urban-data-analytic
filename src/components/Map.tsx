@@ -89,6 +89,7 @@ const Map = ({ earthquakes }: MapProps) => {
       const map = mapRef.current;
 
       map.on("click", "earthquake-points", (e) => {
+        // On click for pop-up
         const features = map.queryRenderedFeatures(e.point, {
           layers: ["earthquake-points"],
         });
