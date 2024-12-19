@@ -28,13 +28,10 @@ const Map = ({ earthquakes }: MapProps) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
-  const [filters, setFilters] = useState({
-    startYear: 2000,
-    endYear: 2024,
-    place: "",
-  });
-
-  const { sources, layers } = useLayerAndSource(earthquakes);
+  const [filters, setFilters] = useState<{ startDate: string; endDate: string; place: string }>({ startDate: "", endDate: "", place: "" });
+  const [applyFilters, setApplyFilters] = useState(false);
+  
+  const { sources, layers } = useLayerAndSource(earthquakes, filters.startDate, filters.endDate, applyFilters);
 
   useEffect(() => {
     if (mapContainer.current) {
@@ -99,9 +96,17 @@ const Map = ({ earthquakes }: MapProps) => {
     []
   );
 
-  const applyFilters = () => {
-    console.log("Applying filters:", filters);
+  const handleApplyFilters = () => {
+    setApplyFilters(true);
   };
+
+  useEffect(() => {
+    if (applyFilters) {
+      // Logique pour appliquer les filtres
+      console.log("Applying filters:", filters);
+      setApplyFilters(false); // Remettre à false après l'application des filtres
+    }
+  }, [applyFilters, filters]);
 
   return (
     <div className="h-screen w-full">
@@ -122,7 +127,7 @@ const Map = ({ earthquakes }: MapProps) => {
             <DateRangeFilter setFilters={setFilters} />
             <button
               className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
-              onClick={applyFilters}
+              onClick={handleApplyFilters}
             >
               Valider les filtres
             </button>

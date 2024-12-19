@@ -1,18 +1,9 @@
-import {
-  CircleLayer,
-  FillLayer,
-  LineLayer,
-  SymbolLayer,
-} from "mapbox-gl";
+import { CircleLayer, FillLayer, LineLayer, SymbolLayer } from "mapbox-gl";
 
 import { EarthquakeType } from "@/utils/earthquakeType";
-import {useEffect} from "react";
+import { useEffect } from "react";
 
-type MapboxLayer =
-  | CircleLayer
-  | FillLayer
-  | LineLayer
-  | SymbolLayer;
+type MapboxLayer = CircleLayer | FillLayer | LineLayer | SymbolLayer;
 
 type CustomMapboxSource = {
   type: "geojson";
@@ -21,37 +12,59 @@ type CustomMapboxSource = {
   maxzoom?: number;
 };
 
-export const useLayerAndSource = (earthquakes: EarthquakeType[]) => {
+export const useLayerAndSource = (
+  earthquakes: EarthquakeType[],
+  startDate: string,
+  endDate: string,
+  applyFilters: boolean
+) => {
   const sources = new Map<string, CustomMapboxSource>();
+
+  console.log("startDate", startDate, "endDate", endDate);
 
   // Convert EarthquakeType to GeoJSON FeatureCollection
   const earthquakeGeoJSON: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
-    features: earthquakes.map((earthquake) => {
-      const coordinates = earthquake.coordinates
-          .split(",")
-          .map(Number);
+    features: earthquakes
+      .filter((earthquake) => {
+        if (!applyFilters) return true;
 
-      if (coordinates.length !== 3 || coordinates.some(isNaN)) {
-        console.error(`Invalid coordinates for earthquake ${earthquake.id}: ${earthquake.coordinates}`);
-        return null; // Ignore invalid data
-      }
+        const earthquakeTime = new Date(earthquake.time).getTime();
+        const startTime = startDate ? new Date(startDate).getTime() : null;
+        const endTime = endDate ? new Date(endDate).getTime() : null;
 
-      return {
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates,
-        },
-        properties: {
-          mag: earthquake.magnitude,
-          place: earthquake.place,
-          time: earthquake.time,
-          updated: earthquake.updated,
-          detailUrl: earthquake.detailUrl,
-        },
-      };
-    }).filter(Boolean) as GeoJSON.Feature[], // Exclude invalid features
+        // Check if earthquakeTime is within the range
+        return (
+          (!startTime || earthquakeTime >= startTime) &&
+          (!endTime || earthquakeTime <= endTime)
+        );
+      })
+      .map((earthquake) => {
+        const coordinates = earthquake.coordinates.split(",").map(Number);
+
+        if (coordinates.length !== 3 || coordinates.some(isNaN)) {
+          console.error(
+            `Invalid coordinates for earthquake ${earthquake.id}: ${earthquake.coordinates}`
+          );
+          return null; // Ignore invalid data
+        }
+
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates,
+          },
+          properties: {
+            mag: earthquake.magnitude,
+            place: earthquake.place,
+            time: earthquake.time,
+            updated: earthquake.updated,
+            detailUrl: earthquake.detailUrl,
+          },
+        };
+      })
+      .filter(Boolean) as GeoJSON.Feature[], // Exclude invalid features
     bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
   };
 
@@ -60,7 +73,7 @@ export const useLayerAndSource = (earthquakes: EarthquakeType[]) => {
       type: "geojson",
       data: earthquakeGeoJSON,
     });
-  }, [earthquakes]);
+  }, [earthquakes, startDate, endDate, applyFilters]);
 
   const layers: MapboxLayer[] = [
     {
@@ -75,6 +88,7 @@ export const useLayerAndSource = (earthquakes: EarthquakeType[]) => {
   ];
 
   return {
+    earthquakeGeoJSON,
     sources,
     layers,
   };

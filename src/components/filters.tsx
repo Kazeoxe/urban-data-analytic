@@ -2,7 +2,7 @@ import { useState } from "react";
 
 interface FilterProps {
   setFilters: React.Dispatch<
-    React.SetStateAction<{ startYear: number; endYear: number; place: string }>
+    React.SetStateAction<{ startDate: string; endDate: string; place: string }>
   >;
 }
 
@@ -56,10 +56,11 @@ export const DateRangeFilter: React.FC<FilterProps> = ({ setFilters }) => {
   const handleStartDateChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+    console.log("event.target.value", event.target.value);
     setStartDate(event.target.value);
     setFilters((prevFilters) => ({
       ...prevFilters,
-      startYear: new Date(event.target.value).getFullYear(),
+      startDate: event.target.value,
     }));
   };
 
@@ -67,7 +68,7 @@ export const DateRangeFilter: React.FC<FilterProps> = ({ setFilters }) => {
     setEndDate(event.target.value);
     setFilters((prevFilters) => ({
       ...prevFilters,
-      endYear: new Date(event.target.value).getFullYear(),
+      endDate: event.target.value,
     }));
   };
 
