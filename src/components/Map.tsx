@@ -19,68 +19,6 @@ const Map = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const { sources, layers } = useLayerAndSource();
-  const animationRef = useRef<number | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-
-  const createPulsingDot = useCallback((map: mapboxgl.Map) => {
-    const size = 200;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-    
-    canvasRef.current = canvas;
-    ctxRef.current = ctx;
-
-    // Ajouter l'image initiale
-    map.addImage('pulsing-dot', { width: size, height: size, data: new Uint8Array(size * size * 4) }, { pixelRatio: 2 });
-  }, []);
-
-  const drawPulsingDot = useCallback((timestamp: number) => {
-    if (!ctxRef.current || !mapRef.current || !canvasRef.current) return;
-
-    const ctx = ctxRef.current;
-    const canvas = canvasRef.current;
-    const size = canvas.width;
-
-    // Calculer l'animation
-    const t = (timestamp % 1500) / 1500;  // Ralentir l'animation à 1.5 secondes
-
-    ctx.clearRect(0, 0, size, size);
-
-    const radius = size / 4;
-    const maxRadius = size / 2.5;
-    const currentRadius = radius + (maxRadius - radius) * t;
-
-    // Cercle extérieur pulsant
-    ctx.beginPath();
-    ctx.arc(size/2, size/2, currentRadius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 0, 0, ${Math.max(0, 0.8 - t)})`;
-    ctx.fill();
-
-    // Cercle central
-    ctx.beginPath();
-    ctx.arc(size/2, size/2, radius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(200, 0, 0, 0.8)';
-    ctx.fill();
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Mettre à jour l'image sur la carte
-    try {
-      const imageData = ctx.getImageData(0, 0, size, size);
-      if (mapRef.current.hasImage('pulsing-dot')) {
-        mapRef.current.updateImage('pulsing-dot', imageData);
-      }
-    } catch (error) {
-      console.error('Error updating pulsing dot:', error);
-    }
-
-    // Continuer l'animation
-    animationRef.current = requestAnimationFrame(drawPulsingDot);
-  }, []);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -88,60 +26,141 @@ const Map = () => {
     mapboxgl.accessToken = MapboxAccessToken;
     const map = new mapboxgl.Map({
       container: mapContainer.current,
-      style: "mapbox://styles/mapbox/light-v11",
+      style: "mapbox://styles/mapbox/dark-v11",
       center: [28.834527, 45.340983],
-      zoom: 1,
-      bearing: 7,
+      zoom: 2,
+      bearing: 0,
       antialias: true
     });
-    console.log(sources.get("earthquake")?.data.features);
+    
     mapRef.current = map;
 
     map.on('load', () => {
-      console.log("Map loaded");
-      
-      // Créer le point pulsant
-      createPulsingDot(map);
-
-      // Ajouter la source des tremblements de terre
       if (sources.get("earthquake")) {
         map.addSource("earthquake", sources.get("earthquake")!);
         
-        map.addLayer({
-          id: "earthquake-points",
-          type: "symbol",
-          source: "earthquake",
-          layout: {
-            'icon-image': 'pulsing-dot',
-            'icon-allow-overlap': true,
-            'icon-size': 0.5
-          }
-        });
+        // Add heatmap layer
+        map.addLayer(
+          {
+            id: 'earthquake-heat',
+            type: 'heatmap',
+            source: 'earthquake',
+            maxzoom: 9,
+            paint: {
+              'heatmap-weight': [
+                'interpolate',
+                ['linear'],
+                ['get', 'mag'],
+                0,
+                0,
+                6,
+                1
+              ],
+              'heatmap-intensity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0,
+                1,
+                9,
+                3
+              ],
+              'heatmap-color': [
+                'interpolate',
+                ['linear'],
+                ['heatmap-density'],
+                0,
+                'rgba(33,102,172,0)',
+                0.2,
+                'rgb(103,169,207)',
+                0.4,
+                'rgb(209,229,240)',
+                0.6,
+                'rgb(253,219,199)',
+                0.8,
+                'rgb(239,138,98)',
+                1,
+                'rgb(178,24,43)'
+              ],
+              'heatmap-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                0,
+                2,
+                9,
+                20
+              ],
+              'heatmap-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                7,
+                1,
+                9,
+                0
+              ]
+            }
+          },
+          'waterway-label'
+        );
 
-        // Démarrer l'animation
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
-        console.log("Starting animation");
-        animationRef.current = requestAnimationFrame(drawPulsingDot);
-      }
-    });
-
-    // Assurer que l'animation continue pendant les mouvements
-    map.on('render', () => {
-      if (!animationRef.current) {
-        console.log("Restarting animation on render");
-        animationRef.current = requestAnimationFrame(drawPulsingDot);
+        // Add circle layer for high zoom levels
+        map.addLayer(
+          {
+            id: 'earthquake-point',
+            type: 'circle',
+            source: 'earthquake',
+            minzoom: 7,
+            paint: {
+              'circle-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                7,
+                ['interpolate', ['linear'], ['get', 'mag'], 1, 1, 6, 4],
+                16,
+                ['interpolate', ['linear'], ['get', 'mag'], 1, 5, 6, 50]
+              ],
+              'circle-color': [
+                'interpolate',
+                ['linear'],
+                ['get', 'mag'],
+                1,
+                'rgba(33,102,172,0)',
+                2,
+                'rgb(103,169,207)',
+                3,
+                'rgb(209,229,240)',
+                4,
+                'rgb(253,219,199)',
+                5,
+                'rgb(239,138,98)',
+                6,
+                'rgb(178,24,43)'
+              ],
+              'circle-stroke-color': 'white',
+              'circle-stroke-width': 1,
+              'circle-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                7,
+                0,
+                8,
+                1
+              ]
+            }
+          },
+          'waterway-label'
+        );
       }
     });
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
       map.remove();
     };
-  }, [sources, layers, createPulsingDot, drawPulsingDot]);
+  }, [sources, layers]);
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
