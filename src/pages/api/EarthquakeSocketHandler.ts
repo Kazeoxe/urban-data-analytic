@@ -4,8 +4,9 @@ import axios from 'axios';
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const UPDATE_INTERVAL = 60000; // 1 minute
-const DATABASE_UPDATE_INTERVAL = 15;
+const UPDATE_INTERVAL = 60000;
+const DATABASE_UPDATE_INTERVAL = 5;
+const LIMIT_TO_RETURN = 100;
 
 const EarthquakeSocketHandler = (req: any, res: any) => {
     if (res.socket.server.io) {
@@ -14,13 +15,13 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
 
     const io = new Server(res.socket.server);
     res.socket.server.io = io;
-    
+
     const now = new Date();
     const dateToFetch = new Date(now.getTime() - DATABASE_UPDATE_INTERVAL * 60 * 1000).toISOString();
 
     const fetchEarthquakeAPI = async () => {
         try {
-            const startTime = dateToFetch; // 5 minutes avant
+            const startTime = dateToFetch;
             const endTime = now.toISOString();
 
             const apiUrl = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startTime}&endtime=${endTime}`;
@@ -46,49 +47,49 @@ const EarthquakeSocketHandler = (req: any, res: any) => {
             const [longitude, latitude, depth] = coordinates;
 
             // Vérifiez si ce séisme existe déjà en base grâce à son ID unique
-            const savedEarthquake = await prisma.earthquake.findUnique({
+            const existingEarthquake = await prisma.earthquake.findUnique({
                 where: { apiId: id },
-                update: {
-                  magnitude: mag,
-                  place,
-                  time: new Date(time),
-                  updated: new Date(updated),
-                  detailUrl: detail,
-                  coordinates: `${longitude},${latitude},${depth}`,
-                },
-                create: {
-                  apiId: id,
-                  magnitude: mag,
-                  place,
-                  time: new Date(time),
-                  updated: new Date(updated),
-                  detailUrl: detail,
-                  coordinates: `${longitude},${latitude},${depth}`,
-                },
-              });
-        
-              newEarthquakes.push(savedEarthquake);
+            });
+
+            if (!existingEarthquake) {
+                const newEarthquake = await prisma.earthquake.create({
+                    data: {
+                        apiId : id,
+                        magnitude: mag,
+                        place,
+                        time: new Date(time),
+                        updated: new Date(updated),
+                        detailUrl: detail,
+                        coordinates: `${longitude},${latitude},${depth}`,
+                    },
+                });
+                newEarthquakes.push(newEarthquake);
             }
-        
-            return newEarthquakes;
+        }
+
+        if (newEarthquakes.length > 0) {
+            console.log(`Enregistré ${newEarthquakes.length} nouveaux séismes`);
+        } else {
+            console.log('Aucun nouveau séisme enregistré');
+        }
+
+        return newEarthquakes;
     };
+
 
     io.on('connection', (socket) => {
         console.log('Client connecté');
 
         const sendUpdate = async () => {
             const earthquakeData = await fetchEarthquakeAPI();
-            const newEarthquakes = await saveEarthquakesToDB(earthquakeData);
+            await saveEarthquakesToDB(earthquakeData);
 
-            console.log("data", earthquakeData);
-            console.log("new", newEarthquakes);
-
-            const allEarthquakes = prisma.earthquake.findMany({
-                orderBy: {time: 'desc'},
-                take: 1000, // Limite raisonnable
+            const allEarthquakes = await prisma.earthquake.findMany({
+                orderBy: { time: 'desc' },
+                take: LIMIT_TO_RETURN,
             });
 
-            socket.emit('data-update', { newEarthquakes, allEarthquakes });
+            socket.emit('data-update', { allEarthquakes });
         };
 
         sendUpdate(); // Appel initial
