@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBox";
 import { useLayerAndSource } from "./use-layer-and-source";
 import DrawerComponent from "./DrawerComponent";
+import Popup from "./Popup";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
@@ -21,6 +22,13 @@ const Map = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
+  const [popupData, setPopupData] = useState<{
+    title: string;
+    magnitude: number;
+    x: number;
+    y: number;
+    visible: boolean;
+  } | null>(null);
 
   const { sources, layers } = useLayerAndSource();
 
@@ -41,11 +49,49 @@ const Map = () => {
   }, []);
 
   useEffect(() => {
-    mapRef.current?.on("load", () => {
-      if (mapRef.current && sources.get("earthquake")) {
-        mapRef.current.addSource("earthquake", sources.get("earthquake")!);
-        mapRef.current.addLayer(layers[0]);
+    const map = mapRef.current;
+
+    if (!map) return;
+
+    map?.on("load", () => {
+      if (map && sources.get("earthquake")) {
+        map.addSource("earthquake", sources.get("earthquake")!);
+        map.addLayer(layers[0]);
       }
+
+      map.on("click", "earthquake-points", (e) => {
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["earthquake-points"],
+        });
+
+        if (features.length > 0) {
+          const feature = features[0];
+          const title = feature.properties?.title;
+          const magnitude = feature.properties?.mag;
+          const point = map.project(
+            feature.geometry.coordinates.slice(0, 2) as [number, number]
+          );
+          const x = point.x;
+          const y = point.y;
+
+          setPopupData({
+            title,
+            magnitude: magnitude,
+            x,
+            y,
+            visible: true,
+          });
+        }
+      });
+
+      // Changer le curseur de la souris sur hover
+      map.on("mouseenter", "earthquake-points", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", "earthquake-points", () => {
+        map.getCanvas().style.cursor = "";
+      });
     });
   }, [sources, layers, selectedAddressPoint]);
 
@@ -69,6 +115,15 @@ const Map = () => {
   return (
     <div style={{ height: "100vh", width: "100%" }}>
       <div ref={mapContainer} style={{ height: "100%", width: "100%" }} />
+      {popupData && popupData.visible && (
+        <Popup
+          title={popupData.title}
+          magnitude={popupData.magnitude}
+          x={popupData.x}
+          y={popupData.y}
+          onClose={() => setPopupData(null)}
+        />
+      )}
       <div style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}>
         <DrawerComponent>
           <SearchBox
