@@ -37,7 +37,8 @@ const Map = ({ earthquakes }: MapProps) => {
   } | null>(null);
   const [filters, setFilters] = useState<{ startDate: string; endDate: string; place: string }>({ startDate: "", endDate: "", place: "" });
   const [applyFilters, setApplyFilters] = useState(false);
-  
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+
   const { sources, layers } = useLayerAndSource(earthquakes, filters.startDate, filters.endDate, applyFilters);
 
 
@@ -95,6 +96,8 @@ const Map = ({ earthquakes }: MapProps) => {
           }
         })
 
+        setIsMapLoaded(true);
+
         map.on("mouseenter", "earthquake-points", () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -102,21 +105,32 @@ const Map = ({ earthquakes }: MapProps) => {
         map.on("mouseleave", "earthquake-points", () => {
           map.getCanvas().style.cursor = "";
         });
-      
-        // Set up event handlers
-        map.on("click", "earthquake-points", (e) => {
-          const features = map.queryRenderedFeatures(e.point, {
-            layers: ["earthquake-points"],
-          });
+      }
+    });
+  }, [sources, layers]);
 
-          if (features.length > 0) {
-            const feature = features[0];
-            const title = feature.properties?.title;
-            const magnitude = feature.properties?.mag;
-            const point = map.project(
-              feature.geometry.coordinates.slice(0, 2) as [number, number]
-            );
+  useEffect(() => {
 
+    if (!isMapLoaded) return;
+
+    const map = mapRef.current;
+
+    if (!map) return;
+
+      // display popup when user clicks on a point
+
+       const handleClick = (e: mapboxgl.MapMouseEvent) => {
+
+        const features = e.features;
+
+        if(features && features.length > 0){
+          const feature = features[0];
+          const title = feature.properties?.place;
+          const magnitude = feature.properties?.mag;
+          if (feature.geometry.type === "Point") {
+            const pointCoordinates = feature.geometry.coordinates as [number, number];
+            const point = map.project(pointCoordinates);
+        
             setPopupData({
               title,
               magnitude,
@@ -125,10 +139,16 @@ const Map = ({ earthquakes }: MapProps) => {
               visible: true,
             });
           }
-        });
-      }
-    });
-  }, [sources, layers]);
+        }
+       };
+
+        map.on("click", "earthquake-points", handleClick);
+
+        return  () => {
+          map.off("click", handleClick);
+        }
+
+  }, [isMapLoaded])
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
@@ -151,9 +171,8 @@ const Map = ({ earthquakes }: MapProps) => {
 
   useEffect(() => {
     if (applyFilters) {
-      // Logique pour appliquer les filtres
-      console.log("Applying filters:", filters);
-      setApplyFilters(false); // Remettre à false après l'application des filtres
+      
+      setApplyFilters(false); 
     }
   }, [applyFilters, filters]);
 
