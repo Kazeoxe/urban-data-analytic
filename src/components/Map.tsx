@@ -8,17 +8,24 @@ import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBo
 import { useLayerAndSource } from "./use-layer-and-source";
 import DrawerComponent from "./DrawerComponent";
 import Popup from "./Popup";
+import { DateRangeFilter, PlacesFilter } from "./filters";
+import "./../app/globals.css";
+import { EarthquakeType } from "@/utils/earthquakeType";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
-  () =>
-    import("@mapbox/search-js-react").then(
-      (mod) => mod.SearchBox as React.ComponentType<SearchBoxProps>
-    ),
-  { ssr: false }
+    () =>
+        import("@mapbox/search-js-react").then(
+            (mod) => mod.SearchBox as React.ComponentType<SearchBoxProps>
+        ),
+    { ssr: false }
 );
 
-const Map = () => {
+type MapProps = {
+  earthquakes: EarthquakeType[];
+};
+
+const Map = ({ earthquakes }: MapProps) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
@@ -29,8 +36,13 @@ const Map = () => {
     y: number;
     visible: boolean;
   } | null>(null);
+  const [filters, setFilters] = useState({
+    startYear: 2000,
+    endYear: 2024,
+    place: "",
+  });
 
-  const { sources, layers } = useLayerAndSource();
+  const { sources, layers } = useLayerAndSource(earthquakes);
 
   useEffect(() => {
     if (mapContainer.current) {
@@ -49,18 +61,31 @@ const Map = () => {
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
+    if (mapRef.current) {
+      const onLoad = () => {
+        if (!mapRef.current?.getSource("earthquake")) {
+          // Ajouter la source si elle n'existe pas encore
+          mapRef.current?.addSource("earthquake", sources.get("earthquake")!);
+        } else {
+          // Mettre à jour les données de la source existante
+          const source = mapRef.current.getSource("earthquake") as mapboxgl.GeoJSONSource;
+          source.setData(sources.get("earthquake")!.data);
+        }
 
-    if (!map) return;
+        // Ajouter la couche seulement si elle n'existe pas
+        if (!mapRef.current?.getLayer(layers[0].id)) {
+          mapRef.current?.addLayer(layers[0]);
+        }
+      };
 
-    map?.on("load", () => {
-      if (map && sources.get("earthquake")) {
-        map.addSource("earthquake", sources.get("earthquake")!);
-        map.addLayer(layers[0]);
+      if (mapRef.current.isStyleLoaded()) {
+        onLoad(); // Exécute directement si le style est chargé
+      } else {
+        mapRef.current.on("load", onLoad); // Sinon, attends que la carte soit chargée
       }
 
-      map.on("click", "earthquake-points", (e) => {
-        const features = map.queryRenderedFeatures(e.point, {
+      mapRef.current.on("click", "earthquake-points", (e) => {
+        const features = mapRef.current.queryRenderedFeatures(e.point, {
           layers: ["earthquake-points"],
         });
 
@@ -68,7 +93,7 @@ const Map = () => {
           const feature = features[0];
           const title = feature.properties?.title;
           const magnitude = feature.properties?.mag;
-          const point = map.project(
+          const point = mapRef.current.project(
             feature.geometry.coordinates.slice(0, 2) as [number, number]
           );
           const x = point.x;
@@ -82,18 +107,21 @@ const Map = () => {
             visible: true,
           });
         }
-      });
-
-      // Changer le curseur de la souris sur hover
-      map.on("mouseenter", "earthquake-points", () => {
+      }); 
+      
+      mapRef.current.on("mouseenter", "earthquake-points", () => {
         map.getCanvas().style.cursor = "pointer";
       });
 
-      map.on("mouseleave", "earthquake-points", () => {
+      mapRef.current.on("mouseleave", "earthquake-points", () => {
         map.getCanvas().style.cursor = "";
-      });
-    });
-  }, [sources, layers, selectedAddressPoint]);
+      });  
+        
+      return () => {
+        mapRef.current?.off("load", onLoad);
+      };
+    }
+  }, [sources, layers]);
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
@@ -112,9 +140,13 @@ const Map = () => {
     []
   );
 
+  const applyFilters = () => {
+    console.log("Applying filters:", filters);
+  };
+
   return (
-    <div style={{ height: "100vh", width: "100%" }}>
-      <div ref={mapContainer} style={{ height: "100%", width: "100%" }} />
+    <div className="h-screen w-full">
+      <div ref={mapContainer} className="h-full w-full" />
       {popupData && popupData.visible && (
         <Popup
           title={popupData.title}
@@ -125,13 +157,27 @@ const Map = () => {
         />
       )}
       <div style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}>
+      <div className="absolute top-5 left-5 z-50">
         <DrawerComponent>
-          <SearchBox
-            accessToken={MapboxAccessToken}
-            placeholder="Rechercher un lieu..."
-            theme={theme}
-            onRetrieve={handleAddressSelect}
-          />
+          <>
+            <SearchBox
+              accessToken={MapboxAccessToken}
+              placeholder="Rechercher un lieu..."
+              theme={theme}
+              onRetrieve={handleAddressSelect}
+            />
+            <h2 className="mt-8 text-lg text-gray-700 font-bold text-center">
+              Filter
+            </h2>
+            <PlacesFilter setFilters={setFilters} />
+            <DateRangeFilter setFilters={setFilters} />
+            <button
+              className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              onClick={applyFilters}
+            >
+              Valider les filtres
+            </button>
+          </>
         </DrawerComponent>
       </div>
     </div>
