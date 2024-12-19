@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const UPDATE_INTERVAL = 60000;
 const DATABASE_UPDATE_INTERVAL = 5;
-const LIMIT_TO_RETURN = 100;
+const LIMIT_TO_RETURN = 500;
 
 const EarthquakeSocketHandler = (req: any, res: any) => {
   if (res.socket.server.io) {
