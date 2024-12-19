@@ -35,19 +35,24 @@ const Map = ({ earthquakes }: MapProps) => {
     y: number;
     visible: boolean;
   } | null>(null);
-  const [filters, setFilters] = useState({
-    startYear: 2000,
-    endYear: 2024,
-    place: "",
-  });
+  const [filters, setFilters] = useState<{ startDate: string; endDate: string; place: string }>({ startDate: "", endDate: "", place: "" });
+  const [applyFilters, setApplyFilters] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  const { sources, layers } = useLayerAndSource(earthquakes);
+  const { sources, layers } = useLayerAndSource(earthquakes, filters.startDate, filters.endDate, applyFilters);
+
+
+  // initialize map
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+
+    if (mapRef.current) return;
 
     mapboxgl.accessToken = MapboxAccessToken;
-    const map = new mapboxgl.Map({
+    
+    if (!mapContainer.current) return;
+
+    const initializeMap = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [28.834527, 45.340983],
@@ -55,10 +60,25 @@ const Map = ({ earthquakes }: MapProps) => {
       bearing: 0,
       antialias: true
     });
-    
-    mapRef.current = map;
 
-    const initializeLayers = () => {
+    mapRef.current = initializeMap;
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [])
+
+// Add source and layers
+
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    
+    const map = mapRef.current;
+
+    map?.on("load", () => {
       if (sources.get("earthquake")) {
         // Remove existing source and layers if they exist
         if (map.getSource("earthquake")) {
@@ -67,126 +87,16 @@ const Map = ({ earthquakes }: MapProps) => {
           map.removeSource("earthquake");
         }
 
-        // Add source
         map.addSource("earthquake", sources.get("earthquake")!);
-        
-        // Add heatmap layer
-        map.addLayer(
-          {
-            id: 'earthquake-heat',
-            type: 'heatmap',
-            source: 'earthquake',
-            maxzoom: 9,
-            paint: {
-              'heatmap-weight': [
-                'interpolate',
-                ['linear'],
-                ['get', 'mag'],
-                0, 0,
-                6, 1
-              ],
-              'heatmap-intensity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0, 1,
-                9, 3
-              ],
-              'heatmap-color': [
-                'interpolate',
-                ['linear'],
-                ['heatmap-density'],
-                0, 'rgba(33,102,172,0)',
-                0.2, 'rgb(103,169,207)',
-                0.4, 'rgb(209,229,240)',
-                0.6, 'rgb(253,219,199)',
-                0.8, 'rgb(239,138,98)',
-                1, 'rgb(178,24,43)'
-              ],
-              'heatmap-radius': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                0, 2,
-                9, 20
-              ],
-              'heatmap-opacity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                7, 1,
-                9, 0
-              ]
-            }
-          },
-          'waterway-label'
-        );
 
-        // Add circle layer for points
-        map.addLayer(
-          {
-            id: 'earthquake-points',
-            type: 'circle',
-            source: 'earthquake',
-            minzoom: 7,
-            paint: {
-              'circle-radius': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                7,
-                ['interpolate', ['linear'], ['get', 'mag'], 1, 1, 6, 4],
-                16,
-                ['interpolate', ['linear'], ['get', 'mag'], 1, 5, 6, 50]
-              ],
-              'circle-color': [
-                'interpolate',
-                ['linear'],
-                ['get', 'mag'],
-                1, 'rgba(33,102,172,0)',
-                2, 'rgb(103,169,207)',
-                3, 'rgb(209,229,240)',
-                4, 'rgb(253,219,199)',
-                5, 'rgb(239,138,98)',
-                6, 'rgb(178,24,43)'
-              ],
-              'circle-stroke-color': 'white',
-              'circle-stroke-width': 1,
-              'circle-opacity': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                7, 0,
-                8, 1
-              ]
-            }
-          },
-          'waterway-label'
-        );
 
-        // Set up event handlers
-        map.on("click", "earthquake-points", (e) => {
-          const features = map.queryRenderedFeatures(e.point, {
-            layers: ["earthquake-points"],
-          });
-
-          if (features.length > 0) {
-            const feature = features[0];
-            const title = feature.properties?.title;
-            const magnitude = feature.properties?.mag;
-            const point = map.project(
-              feature.geometry.coordinates.slice(0, 2) as [number, number]
-            );
-
-            setPopupData({
-              title,
-              magnitude,
-              x: point.x,
-              y: point.y,
-              visible: true,
-            });
+        layers.forEach((layer) => {
+          if(!map.getLayer(layer.id)){
+            map.addLayer(layer);
           }
-        });
+        })
+
+        setIsMapLoaded(true);
 
         map.on("mouseenter", "earthquake-points", () => {
           map.getCanvas().style.cursor = "pointer";
@@ -196,18 +106,49 @@ const Map = ({ earthquakes }: MapProps) => {
           map.getCanvas().style.cursor = "";
         });
       }
-    };
-
-    if (map.isStyleLoaded()) {
-      initializeLayers();
-    } else {
-      map.on('load', initializeLayers);
-    }
-
-    return () => {
-      map.remove();
-    };
+    });
   }, [sources, layers]);
+
+  useEffect(() => {
+
+    if (!isMapLoaded) return;
+
+    const map = mapRef.current;
+
+    if (!map) return;
+
+      // display popup when user clicks on a point
+
+       const handleClick = (e: mapboxgl.MapMouseEvent) => {
+
+        const features = e.features;
+
+        if(features && features.length > 0){
+          const feature = features[0];
+          const title = feature.properties?.place;
+          const magnitude = feature.properties?.mag;
+          if (feature.geometry.type === "Point") {
+            const pointCoordinates = feature.geometry.coordinates as [number, number];
+            const point = map.project(pointCoordinates);
+        
+            setPopupData({
+              title,
+              magnitude,
+              x: point.x,
+              y: point.y,
+              visible: true,
+            });
+          }
+        }
+       };
+
+        map.on("click", "earthquake-points", handleClick);
+
+        return  () => {
+          map.off("click", handleClick);
+        }
+
+  }, [isMapLoaded])
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
@@ -224,9 +165,16 @@ const Map = ({ earthquakes }: MapProps) => {
     []
   );
 
-  const applyFilters = () => {
-    console.log("Applying filters:", filters);
+  const handleApplyFilters = () => {
+    setApplyFilters(true);
   };
+
+  useEffect(() => {
+    if (applyFilters) {
+      
+      setApplyFilters(false); 
+    }
+  }, [applyFilters, filters]);
 
   return (
     <div className="h-screen w-full">
@@ -256,7 +204,7 @@ const Map = ({ earthquakes }: MapProps) => {
             <DateRangeFilter setFilters={setFilters} />
             <button
               className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
-              onClick={applyFilters}
+              onClick={handleApplyFilters}
             >
               Valider les filtres
             </button>
