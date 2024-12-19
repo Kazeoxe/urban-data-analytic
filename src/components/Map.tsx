@@ -40,11 +40,18 @@ const Map = ({ earthquakes }: MapProps) => {
   
   const { sources, layers } = useLayerAndSource(earthquakes, filters.startDate, filters.endDate, applyFilters);
 
+
+  // initialize map
+
   useEffect(() => {
-    if (!mapContainer.current) return;
+
+    if (mapRef.current) return;
 
     mapboxgl.accessToken = MapboxAccessToken;
-    const map = new mapboxgl.Map({
+    
+    if (!mapContainer.current) return;
+
+    const initializeMap = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [28.834527, 45.340983],
@@ -52,10 +59,25 @@ const Map = ({ earthquakes }: MapProps) => {
       bearing: 0,
       antialias: true
     });
-    
-    mapRef.current = map;
 
-    const initializeLayers = () => {
+    mapRef.current = initializeMap;
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [])
+
+// Add source and layers
+
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    
+    const map = mapRef.current;
+
+    map?.on("load", () => {
       if (sources.get("earthquake")) {
         // Remove existing source and layers if they exist
         if (map.getSource("earthquake")) {
@@ -64,10 +86,8 @@ const Map = ({ earthquakes }: MapProps) => {
           map.removeSource("earthquake");
         }
 
-        // Add source
         map.addSource("earthquake", sources.get("earthquake")!);
 
-        // Add layers
 
         layers.forEach((layer) => {
           if(!map.getLayer(layer.id)){
@@ -75,6 +95,13 @@ const Map = ({ earthquakes }: MapProps) => {
           }
         })
 
+        map.on("mouseenter", "earthquake-points", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+
+        map.on("mouseleave", "earthquake-points", () => {
+          map.getCanvas().style.cursor = "";
+        });
       
         // Set up event handlers
         map.on("click", "earthquake-points", (e) => {
@@ -99,26 +126,8 @@ const Map = ({ earthquakes }: MapProps) => {
             });
           }
         });
-
-        map.on("mouseenter", "earthquake-points", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "earthquake-points", () => {
-          map.getCanvas().style.cursor = "";
-        });
       }
-    };
-
-    if (map.isStyleLoaded()) {
-      initializeLayers();
-    } else {
-      map.on('load', initializeLayers);
-    }
-
-    return () => {
-      map.remove();
-    };
+    });
   }, [sources, layers]);
 
   const handleAddressSelect = useCallback(
