@@ -18,7 +18,7 @@ interface DrawerComponentProps {
 const DrawerComponent = ({ children }: DrawerComponentProps) => {
   return (
     <DrawerRoot placement="start">
-      <DrawerBackdrop/>
+      <DrawerBackdrop />
       <DrawerTrigger asChild>
         <Button
           variant="solid"
@@ -37,8 +37,10 @@ const DrawerComponent = ({ children }: DrawerComponentProps) => {
         <DrawerHeader>
           <DrawerTitle></DrawerTitle>
         </DrawerHeader>
-        <DrawerBody py={12} bg="#F2EEED">{children}</DrawerBody>
-        <DrawerCloseTrigger color="black"/>
+        <DrawerBody py={12} bg="#F2EEED">
+          {children}
+        </DrawerBody>
+        <DrawerCloseTrigger color="black" />
       </DrawerContent>
     </DrawerRoot>
   );
