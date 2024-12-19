@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBox";
 import { useLayerAndSource } from "./use-layer-and-source";
 import DrawerComponent from "./DrawerComponent";
+import { DateRangeFilter, PlacesFilter } from "./filters";
+import "./../app/globals.css";
 
 // Import dynamique du SearchBox avec typage explicite
 const SearchBox = dynamic(
@@ -21,6 +23,11 @@ const Map = () => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
+  const [filters, setFilters] = useState({
+    startYear: 2000,
+    endYear: 2024,
+    place: "",
+  });
 
   const { sources, layers } = useLayerAndSource();
 
@@ -66,17 +73,34 @@ const Map = () => {
     []
   );
 
+  const applyFilters = () => {
+    console.log("Applying filters:", filters);
+  };
+
   return (
-    <div style={{ height: "100vh", width: "100%" }}>
-      <div ref={mapContainer} style={{ height: "100%", width: "100%" }} />
-      <div style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}>
+    <div className="h-screen w-full">
+      <div ref={mapContainer} className="h-full w-full" />
+      <div className="absolute top-5 left-5 z-50">
         <DrawerComponent>
-          <SearchBox
-            accessToken={MapboxAccessToken}
-            placeholder="Rechercher un lieu..."
-            theme={theme}
-            onRetrieve={handleAddressSelect}
-          />
+          <>
+            <SearchBox
+              accessToken={MapboxAccessToken}
+              placeholder="Rechercher un lieu..."
+              theme={theme}
+              onRetrieve={handleAddressSelect}
+            />
+            <h2 className="mt-8 text-lg text-gray-700 font-bold text-center">
+              Filter
+            </h2>
+            <PlacesFilter setFilters={setFilters} />
+            <DateRangeFilter setFilters={setFilters} />
+            <button
+              className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              onClick={applyFilters}
+            >
+              Valider les filtres
+            </button>
+          </>
         </DrawerComponent>
       </div>
     </div>
