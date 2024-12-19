@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { SearchBoxProps } from "@mapbox/search-js-react/dist/components/SearchBox";
 import { useLayerAndSource } from "./use-layer-and-source";
 import DrawerComponent from "./DrawerComponent";
+import Popup from "./Popup";
 import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
@@ -28,6 +29,13 @@ const Map = ({ earthquakes }: MapProps) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [selectedAddressPoint, setSelectedAddressPoint] = useState<Point>();
+  const [popupData, setPopupData] = useState<{
+    title: string;
+    magnitude: number;
+    x: number;
+    y: number;
+    visible: boolean;
+  } | null>(null);
   const [filters, setFilters] = useState({
     startYear: 2000,
     endYear: 2024,
@@ -76,6 +84,39 @@ const Map = ({ earthquakes }: MapProps) => {
         mapRef.current.on("load", onLoad); // Sinon, attends que la carte soit chargée
       }
 
+      mapRef.current.on("click", "earthquake-points", (e) => {
+        const features = mapRef.current.queryRenderedFeatures(e.point, {
+          layers: ["earthquake-points"],
+        });
+
+        if (features.length > 0) {
+          const feature = features[0];
+          const title = feature.properties?.title;
+          const magnitude = feature.properties?.mag;
+          const point = mapRef.current.project(
+            feature.geometry.coordinates.slice(0, 2) as [number, number]
+          );
+          const x = point.x;
+          const y = point.y;
+
+          setPopupData({
+            title,
+            magnitude: magnitude,
+            x,
+            y,
+            visible: true,
+          });
+        }
+      }); 
+      
+      mapRef.current.on("mouseenter", "earthquake-points", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      mapRef.current.on("mouseleave", "earthquake-points", () => {
+        map.getCanvas().style.cursor = "";
+      });  
+        
       return () => {
         mapRef.current?.off("load", onLoad);
       };
@@ -106,6 +147,16 @@ const Map = ({ earthquakes }: MapProps) => {
   return (
     <div className="h-screen w-full">
       <div ref={mapContainer} className="h-full w-full" />
+      {popupData && popupData.visible && (
+        <Popup
+          title={popupData.title}
+          magnitude={popupData.magnitude}
+          x={popupData.x}
+          y={popupData.y}
+          onClose={() => setPopupData(null)}
+        />
+      )}
+      <div style={{ position: "absolute", top: 20, left: 20, zIndex: 1000 }}>
       <div className="absolute top-5 left-5 z-50">
         <DrawerComponent>
           <>
