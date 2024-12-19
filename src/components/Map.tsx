@@ -55,9 +55,9 @@ const Map = ({ earthquakes }: MapProps) => {
   useEffect(() => {
     if (mapRef.current) {
       const onLoad = () => {
-        if (!mapRef.current.getSource("earthquake")) {
+        if (!mapRef.current?.getSource("earthquake")) {
           // Ajouter la source si elle n'existe pas encore
-          mapRef.current.addSource("earthquake", sources.get("earthquake")!);
+          mapRef.current?.addSource("earthquake", sources.get("earthquake")!);
         } else {
           // Mettre à jour les données de la source existante
           const source = mapRef.current.getSource("earthquake") as mapboxgl.GeoJSONSource;
@@ -65,8 +65,8 @@ const Map = ({ earthquakes }: MapProps) => {
         }
 
         // Ajouter la couche seulement si elle n'existe pas
-        if (!mapRef.current.getLayer(layers[0].id)) {
-          mapRef.current.addLayer(layers[0]);
+        if (!mapRef.current?.getLayer(layers[0].id)) {
+          mapRef.current?.addLayer(layers[0]);
         }
       };
 
