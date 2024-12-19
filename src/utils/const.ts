@@ -1,4 +1,4 @@
-import { SearchIcon } from "./SearchIcon";
+import { SearchIcon } from "../components/SearchIcon";
 
 export const MapboxAccessToken =
   "pk.eyJ1Ijoiam9oYW5uZXM2MCIsImEiOiJjbHEzbTE4ZjEwYzN1MmtxdTBreXY5aWczIn0.YBYL7DY2965n-ba3p_wWcA";

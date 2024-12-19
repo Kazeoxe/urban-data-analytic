@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import localFont from "next/font/local";
 import "./globals.css";
 
-const LoaderComponent = dynamic(() => import('../components/Loader'), {
+const LoaderComponent = dynamic(() => import('../components/ui/Loader'), {
   ssr: false,
 })
 
