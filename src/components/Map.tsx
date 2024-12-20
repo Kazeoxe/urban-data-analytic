@@ -35,21 +35,28 @@ const Map = ({ earthquakes }: MapProps) => {
     y: number;
     visible: boolean;
   } | null>(null);
-  const [filters, setFilters] = useState<{ startDate: string; endDate: string; place: string }>({ startDate: "", endDate: "", place: "" });
+  const [filters, setFilters] = useState<{
+    startDate: string;
+    endDate: string;
+    place: string;
+  }>({ startDate: "", endDate: "", place: "" });
   const [applyFilters, setApplyFilters] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  const { sources, layers } = useLayerAndSource(earthquakes, filters.startDate, filters.endDate, applyFilters);
-
+  const { sources, layers } = useLayerAndSource(
+    earthquakes,
+    filters.startDate,
+    filters.endDate,
+    applyFilters
+  );
 
   // initialize map
 
   useEffect(() => {
-
     if (mapRef.current) return;
 
     mapboxgl.accessToken = MapboxAccessToken;
-    
+
     if (!mapContainer.current) return;
 
     const initializeMap = new mapboxgl.Map({
@@ -58,7 +65,7 @@ const Map = ({ earthquakes }: MapProps) => {
       center: [28.834527, 45.340983],
       zoom: 2,
       bearing: 0,
-      antialias: true
+      antialias: true,
     });
 
     mapRef.current = initializeMap;
@@ -69,91 +76,99 @@ const Map = ({ earthquakes }: MapProps) => {
         mapRef.current = null;
       }
     };
-  }, [])
+  }, []);
 
-// Add source and layers
-
-useEffect(() => {
-  if (!mapContainer.current) return;
-
-  const map = mapRef.current;
-
-  // Check if the map is ready
-  const updateMapSource = () => {
-    if (!map) return;
-
-    if (map.isStyleLoaded()) {
-      const sourceId = "earthquake";
-
-      if (map.getSource(sourceId)) {
-        const source = map.getSource(sourceId);
-
-        // Update the source with the new filtered data
-        if (source && source.type === "geojson") {
-          (source as mapboxgl.GeoJSONSource).setData(sources.get(sourceId)!.data);
-          setApplyFilters(false);
-        }
-      } else if (sources.get(sourceId)) {
-       
-        map.addSource(sourceId, sources.get(sourceId)!);
-
-        layers.forEach((layer) => {
-          if (!map.getLayer(layer.id)) {
-            map.addLayer(layer);
-          }
-        });
-      }
-    } else {
-      map.once("styledata", updateMapSource);
-    }
-  };
-
-  updateMapSource();
-
-  setIsMapLoaded(true);
-}, [sources, layers]); 
-
+  // Add source and layers
 
   useEffect(() => {
+    if (!mapContainer.current) return;
 
+    const map = mapRef.current;
+
+    // Check if the map is ready
+    const updateMapSource = () => {
+      if (!map) return;
+
+      if (map.isStyleLoaded()) {
+        const sourceId = "earthquake";
+
+        if (map.getSource(sourceId)) {
+          const source = map.getSource(sourceId);
+
+          // Update the source with the new filtered data
+          if (source && source.type === "geojson") {
+            (source as mapboxgl.GeoJSONSource).setData(
+              sources.get(sourceId)!.data
+            );
+            setApplyFilters(false);
+          }
+        } else if (sources.get(sourceId)) {
+          map.addSource(sourceId, sources.get(sourceId)!);
+
+          layers.forEach((layer) => {
+            if (!map.getLayer(layer.id)) {
+              map.addLayer(layer);
+            }
+          });
+        }
+      } else {
+        map.once("styledata", updateMapSource);
+      }
+    };
+
+    updateMapSource();
+
+    setIsMapLoaded(true);
+  }, [sources, layers]);
+
+  useEffect(() => {
     if (!isMapLoaded) return;
 
     const map = mapRef.current;
 
     if (!map) return;
 
-      // display popup when user clicks on a point
+    // display popup when user clicks on a point
 
-       const handleClick = (e: mapboxgl.MapMouseEvent) => {
+    const handleClick = (e: mapboxgl.MapMouseEvent) => {
+      const features = e.features;
 
-        const features = e.features;
+      if (features && features.length > 0) {
+        const feature = features[0];
+        const title = feature.properties?.place;
+        const magnitude = feature.properties?.mag;
+        if (feature.geometry.type === "Point") {
+          const pointCoordinates = feature.geometry.coordinates as [
+            number,
+            number
+          ];
+          const point = map.project(pointCoordinates);
 
-        if(features && features.length > 0){
-          const feature = features[0];
-          const title = feature.properties?.place;
-          const magnitude = feature.properties?.mag;
-          if (feature.geometry.type === "Point") {
-            const pointCoordinates = feature.geometry.coordinates as [number, number];
-            const point = map.project(pointCoordinates);
-        
-            setPopupData({
-              title,
-              magnitude,
-              x: point.x,
-              y: point.y,
-              visible: true,
-            });
-          }
+          setPopupData({
+            title,
+            magnitude,
+            x: point.x,
+            y: point.y,
+            visible: true,
+          });
         }
-       };
+      }
+    };
 
-        map.on("click", "earthquake-points", handleClick);
+    map.on("click", "earthquake-points", handleClick);
 
-        return  () => {
-          map.off("click", handleClick);
-        }
+    map.on("mouseenter", "earthquake-points", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
 
-  }, [isMapLoaded])
+    map.on("mouseleave", "earthquake-points", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    return () => {
+      map.off("click", handleClick);
+    };
+  }, [isMapLoaded]);
 
   const handleAddressSelect = useCallback(
     (event: SearchBoxRetrieveResponse) => {
