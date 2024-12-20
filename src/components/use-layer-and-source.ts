@@ -1,6 +1,7 @@
 import { CircleLayerSpecification, HeatmapLayerSpecification } from "mapbox-gl";
 
 import { EarthquakeType } from "@/utils/earthquakeType";
+import { useMemo } from "react";
 
 type MapboxLayer = CircleLayerSpecification | HeatmapLayerSpecification;
 
@@ -19,51 +20,54 @@ export const useLayerAndSource = (
 ) => {
   const sources = new Map<string, CustomMapboxSource>();
 
-  // Convert EarthquakeType to GeoJSON FeatureCollection
-  const earthquakeGeoJSON: GeoJSON.FeatureCollection = {
-    type: "FeatureCollection",
-    features: earthquakes
-      .filter((earthquake) => {
-        if (!applyFilters) return true;
+  // Convertir EarthquakeType en GeoJSON FeatureCollection sans filtrage
+  const baseFeatures = earthquakes
+    .map((earthquake) => {
+      const coordinates = earthquake.coordinates.split(",").map(Number);
 
-        const earthquakeTime = new Date(earthquake.time).getTime();
-        const startTime = startDate ? new Date(startDate).getTime() : null;
-        const endTime = endDate ? new Date(endDate).getTime() : null;
+      if (coordinates.length !== 3 || coordinates.some(isNaN)) {
+        console.error(
+          `Invalid coordinates for earthquake ${earthquake.id}: ${earthquake.coordinates}`
+        );
+        return null; // Ignore invalid data
+      }
 
-        // Check if earthquakeTime is within the range
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates,
+        },
+        properties: {
+          mag: earthquake.magnitude,
+          place: earthquake.place,
+          time: earthquake.time,
+          updated: earthquake.updated,
+          detailUrl: earthquake.detailUrl,
+        },
+      };
+    })
+    .filter(Boolean) as GeoJSON.Feature[];
+
+  const filteredFeatures = applyFilters
+    ? baseFeatures.filter((feature) => {
+        const earthquakeTime = feature.properties?.time.split("T")[0];
+
         return (
-          (!startTime || earthquakeTime >= startTime) &&
-          (!endTime || earthquakeTime <= endTime)
+          (!startDate || earthquakeTime >= startDate) &&
+          (!endDate || earthquakeTime <= endDate)
         );
       })
-      .map((earthquake) => {
-        const coordinates = earthquake.coordinates.split(",").map(Number);
+    : baseFeatures;
 
-        if (coordinates.length !== 3 || coordinates.some(isNaN)) {
-          console.error(
-            `Invalid coordinates for earthquake ${earthquake.id}: ${earthquake.coordinates}`
-          );
-          return null; // Ignore invalid data
-        }
-
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates,
-          },
-          properties: {
-            mag: earthquake.magnitude,
-            place: earthquake.place,
-            time: earthquake.time,
-            updated: earthquake.updated,
-            detailUrl: earthquake.detailUrl,
-          },
-        };
-      })
-      .filter(Boolean) as GeoJSON.Feature[], // Exclude invalid features
-    bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
-  };
+  const earthquakeGeoJSON: GeoJSON.FeatureCollection = useMemo(
+    () => ({
+      type: "FeatureCollection",
+      features: filteredFeatures,
+      bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
+    }),
+    [filteredFeatures]
+  );
 
   sources.set("earthquake", {
     type: "geojson",

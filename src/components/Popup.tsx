@@ -26,7 +26,7 @@ const Popup: React.FC<PopupProps> = ({ title, magnitude, x, y, onClose }) => {
       }}
     >
       <button
-        onClick={onClose} // Appelle le callback pour fermer le popup
+        onClick={onClose}
         style={{
           position: "absolute",
           top: "5px",

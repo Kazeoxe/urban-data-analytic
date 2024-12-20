@@ -56,7 +56,6 @@ export const DateRangeFilter: React.FC<FilterProps> = ({ setFilters }) => {
   const handleStartDateChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    console.log("event.target.value", event.target.value);
     setStartDate(event.target.value);
     setFilters((prevFilters) => ({
       ...prevFilters,

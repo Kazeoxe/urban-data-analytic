@@ -73,41 +73,46 @@ const Map = ({ earthquakes }: MapProps) => {
 
 // Add source and layers
 
-  useEffect(() => {
-    if (!mapContainer.current) return;
-    
-    const map = mapRef.current;
+useEffect(() => {
+  if (!mapContainer.current) return;
 
-    map?.on("load", () => {
-      if (sources.get("earthquake")) {
-        // Remove existing source and layers if they exist
-        if (map.getSource("earthquake")) {
-          if (map.getLayer("earthquake-heat")) map.removeLayer("earthquake-heat");
-          if (map.getLayer("earthquake-points")) map.removeLayer("earthquake-points");
-          map.removeSource("earthquake");
+  const map = mapRef.current;
+
+  // Check if the map is ready
+  const updateMapSource = () => {
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
+      const sourceId = "earthquake";
+
+      if (map.getSource(sourceId)) {
+        const source = map.getSource(sourceId);
+
+        // Update the source with the new filtered data
+        if (source && source.type === "geojson") {
+          (source as mapboxgl.GeoJSONSource).setData(sources.get(sourceId)!.data);
+          setApplyFilters(false);
         }
-
-        map.addSource("earthquake", sources.get("earthquake")!);
-
+      } else if (sources.get(sourceId)) {
+       
+        map.addSource(sourceId, sources.get(sourceId)!);
 
         layers.forEach((layer) => {
-          if(!map.getLayer(layer.id)){
+          if (!map.getLayer(layer.id)) {
             map.addLayer(layer);
           }
-        })
-
-        setIsMapLoaded(true);
-
-        map.on("mouseenter", "earthquake-points", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-
-        map.on("mouseleave", "earthquake-points", () => {
-          map.getCanvas().style.cursor = "";
         });
       }
-    });
-  }, [sources, layers]);
+    } else {
+      map.once("styledata", updateMapSource);
+    }
+  };
+
+  updateMapSource();
+
+  setIsMapLoaded(true);
+}, [sources, layers]); 
+
 
   useEffect(() => {
 
@@ -168,13 +173,6 @@ const Map = ({ earthquakes }: MapProps) => {
   const handleApplyFilters = () => {
     setApplyFilters(true);
   };
-
-  useEffect(() => {
-    if (applyFilters) {
-      
-      setApplyFilters(false); 
-    }
-  }, [applyFilters, filters]);
 
   return (
     <div className="h-screen w-full">
