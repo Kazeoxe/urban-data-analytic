@@ -1,9 +1,16 @@
-import { CircleLayerSpecification, HeatmapLayerSpecification } from "mapbox-gl";
+import {
+  CircleLayerSpecification,
+  HeatmapLayerSpecification,
+  LineLayerSpecification,
+} from "mapbox-gl";
 
 import { EarthquakeType } from "@/utils/earthquakeType";
-import { useMemo } from "react";
+import { boundariesData } from "./../utils/PB2002_boundaries";
 
-type MapboxLayer = CircleLayerSpecification | HeatmapLayerSpecification;
+type MapboxLayer =
+  | CircleLayerSpecification
+  | HeatmapLayerSpecification
+  | LineLayerSpecification;
 
 type CustomMapboxSource = {
   type: "geojson";
@@ -12,12 +19,7 @@ type CustomMapboxSource = {
   maxzoom?: number;
 };
 
-export const useLayerAndSource = (
-  earthquakes: EarthquakeType[],
-  startDate: string,
-  endDate: string,
-  applyFilters: boolean
-) => {
+export const useLayerAndSource = (earthquakes: EarthquakeType[]) => {
   const sources = new Map<string, CustomMapboxSource>();
 
   // Convertir EarthquakeType en GeoJSON FeatureCollection sans filtrage
@@ -49,29 +51,20 @@ export const useLayerAndSource = (
     })
     .filter(Boolean) as GeoJSON.Feature[];
 
-  const filteredFeatures = applyFilters
-    ? baseFeatures.filter((feature) => {
-        const earthquakeTime = feature.properties?.time.split("T")[0];
-
-        return (
-          (!startDate || earthquakeTime >= startDate) &&
-          (!endDate || earthquakeTime <= endDate)
-        );
-      })
-    : baseFeatures;
-
-  const earthquakeGeoJSON: GeoJSON.FeatureCollection = useMemo(
-    () => ({
-      type: "FeatureCollection",
-      features: filteredFeatures,
-      bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
-    }),
-    [filteredFeatures]
-  );
+  const earthquakeGeoJSON: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: baseFeatures,
+    bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
+  };
 
   sources.set("earthquake", {
     type: "geojson",
     data: earthquakeGeoJSON,
+  });
+
+  sources.set("tectonic-plates", {
+    type: "geojson",
+    data: boundariesData,
   });
 
   const layers: MapboxLayer[] = [
@@ -151,6 +144,16 @@ export const useLayerAndSource = (
         ],
         "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
         "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 1, 9, 0],
+      },
+    },
+    {
+      id: "tectonic-lines",
+      type: "line",
+      source: "tectonic-plates",
+      paint: {
+        "line-color": "#FF8C00",
+        "line-width": 2,
+        "line-opacity": 0.7,
       },
     },
   ];
