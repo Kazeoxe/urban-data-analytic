@@ -40,18 +40,11 @@ const Map = ({ earthquakes }: MapProps) => {
     endDate: string;
     place: string;
   }>({ startDate: "", endDate: "", place: "" });
-  const [applyFilters, setApplyFilters] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  const { sources, layers } = useLayerAndSource(
-    earthquakes,
-    filters.startDate,
-    filters.endDate,
-    applyFilters
-  );
+  const { sources, layers, earthquakeGeoJSON } = useLayerAndSource(earthquakes);
 
-  // initialize map
-
+  // Initialisation de la carte
   useEffect(() => {
     if (mapRef.current) return;
 
@@ -70,6 +63,10 @@ const Map = ({ earthquakes }: MapProps) => {
 
     mapRef.current = initializeMap;
 
+    initializeMap.on("load", () => {
+      setIsMapLoaded(true);
+    });
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -78,49 +75,7 @@ const Map = ({ earthquakes }: MapProps) => {
     };
   }, []);
 
-  // Add source and layers
-
-  useEffect(() => {
-    if (!mapContainer.current) return;
-
-    const map = mapRef.current;
-
-    // Check if the map is ready
-    const updateMapSource = () => {
-      if (!map) return;
-
-      if (map.isStyleLoaded()) {
-        const sourceId = "earthquake";
-
-        if (map.getSource(sourceId)) {
-          const source = map.getSource(sourceId);
-
-          // Update the source with the new filtered data
-          if (source && source.type === "geojson") {
-            (source as mapboxgl.GeoJSONSource).setData(
-              sources.get(sourceId)!.data
-            );
-            setApplyFilters(false);
-          }
-        } else if (sources.get(sourceId)) {
-          map.addSource(sourceId, sources.get(sourceId)!);
-
-          layers.forEach((layer) => {
-            if (!map.getLayer(layer.id)) {
-              map.addLayer(layer);
-            }
-          });
-        }
-      } else {
-        map.once("styledata", updateMapSource);
-      }
-    };
-
-    updateMapSource();
-
-    setIsMapLoaded(true);
-  }, [sources, layers]);
-
+  // Ajout des sources et des couches
   useEffect(() => {
     if (!isMapLoaded) return;
 
@@ -128,10 +83,73 @@ const Map = ({ earthquakes }: MapProps) => {
 
     if (!map) return;
 
-    // display popup when user clicks on a point
+    const sourceId = "earthquake";
+
+    if (!map.getSource(sourceId)) {
+      sources.forEach((source, id) => {
+        if (!map.getSource(id)) {
+          map.addSource(id, source);
+        }
+      });
+
+      layers.forEach((layer) => {
+        if (!map.getLayer(layer.id)) {
+          map.addLayer(layer);
+        }
+      });
+    }
+  }, [isMapLoaded, sources, layers]);
+  
+
+  // Filtre
+
+  
+
+const handleApplyFilters = useCallback(() => {
+
+  const map = mapRef.current;
+
+  if (!map) return;
+
+  const source = map.getSource('earthquake');
+  if (source && source.type === "geojson") {
+
+    const featureFilter = earthquakeGeoJSON.features.filter((feature) => {
+      const earthquakeTime = feature.properties?.time.split("T")[0];
+
+        return (
+          (!filters.startDate || earthquakeTime >= filters.startDate) &&
+          (!filters.endDate || earthquakeTime <= filters.endDate)
+        );
+      })
+
+      const filteredData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: featureFilter,
+        bbox: [-179.9495, -62.134, -3.49, 179.877, 81.9293, 625.963],
+      };
+
+
+    source.setData(filteredData);
+    
+  } else {
+    console.log('La source des données est introuvable ou ne supporte pas setData.');
+  }
+}, [earthquakeGeoJSON, filters.endDate, filters.startDate])
+
+
+  // Gestion des événements de clic pour afficher le popup
+  useEffect(() => {
+    if (!isMapLoaded) return;
+
+    const map = mapRef.current;
+
+    if (!map) return;
 
     const handleClick = (e: mapboxgl.MapMouseEvent) => {
-      const features = e.features;
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ["earthquake-points"],
+      });
 
       if (features && features.length > 0) {
         const feature = features[0];
@@ -184,10 +202,6 @@ const Map = ({ earthquakes }: MapProps) => {
     },
     []
   );
-
-  const handleApplyFilters = () => {
-    setApplyFilters(true);
-  };
 
   return (
     <div className="h-screen w-full">
