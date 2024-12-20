@@ -12,6 +12,7 @@ import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
 import tectonicData from "../utils/PB2002_boundaries.json";
+import { findEarthquakesNearPlates } from '../utils/earthquakeAnalysis';
 import { Feature, GeoJSON } from "geojson";
 
 const SearchBox = dynamic(
@@ -51,6 +52,27 @@ const Map = ({ earthquakes }: MapProps) => {
     filters.endDate,
     applyFilters
   );
+
+  useEffect(() => {
+    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length) return;
+    
+    const earthquakesGeoJSON = {
+      type: 'FeatureCollection',
+      features: earthquakes.map(eq => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: eq.coordinates.split(',').map(Number)  
+        },
+        properties: {
+          place: eq.place,
+          mag: eq.magnitude
+        }
+      }))
+    } as GeoJSON;
+    console.log(earthquakes);
+    findEarthquakesNearPlates(earthquakesGeoJSON, tectonicData as GeoJSON);
+  }, [isMapLoaded, earthquakes]);
 
   // initialize map
 
