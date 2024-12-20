@@ -13,7 +13,7 @@ import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
 import tectonicData from "../utils/PB2002_boundaries.json";
 import { findEarthquakesNearPlates } from "../utils/earthquakeAnalysis";
-import { Feature, GeoJSON } from "geojson";
+import { GeoJSON } from "geojson";
 import DistanceChart from "./DistanceChart";
 import { DistanceStats } from "../utils/earthquakeAnalysis";
 
@@ -50,31 +50,6 @@ const Map = ({ earthquakes }: MapProps) => {
 
   const { sources, layers, earthquakeGeoJSON } = useLayerAndSource(earthquakes);
 
-  useEffect(() => {
-    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length)
-      return;
-
-    const earthquakesGeoJSON = {
-      type: "FeatureCollection",
-      features: earthquakes.map((eq) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: eq.coordinates.split(",").map(Number),
-        },
-        properties: {
-          place: eq.place,
-          mag: eq.magnitude,
-        },
-      })),
-    } as GeoJSON;
-    const stats = findEarthquakesNearPlates(
-      earthquakesGeoJSON,
-      tectonicData as GeoJSON
-    );
-    setDistanceStats(stats);
-  }, [isMapLoaded, earthquakes]);
-
   // Initialisation de la carte
   useEffect(() => {
     if (mapRef.current) return;
@@ -106,6 +81,32 @@ const Map = ({ earthquakes }: MapProps) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length)
+      return;
+
+    const earthquakesGeoJSON = {
+      type: "FeatureCollection",
+      features: earthquakes.map((eq) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: eq.coordinates.split(",").map(Number),
+        },
+        properties: {
+          place: eq.place,
+          mag: eq.magnitude,
+        },
+      })),
+    } as GeoJSON;
+    const stats = findEarthquakesNearPlates(
+      earthquakesGeoJSON,
+      tectonicData as GeoJSON
+    );
+    setDistanceStats(stats);
+  }, [isMapLoaded, earthquakes]);
+
+
   // Ajout des sources et des couches
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -132,9 +133,7 @@ const Map = ({ earthquakes }: MapProps) => {
   }, [isMapLoaded, sources, layers]);
   
 
-  // Filtre
-
-  
+  // Filtre  
 
 const handleApplyFilters = useCallback(() => {
 
