@@ -37,7 +37,7 @@ const DrawerComponent = ({ children }: DrawerComponentProps) => {
         <DrawerHeader>
           <DrawerTitle></DrawerTitle>
         </DrawerHeader>
-        <DrawerBody py={12} bg="#F2EEED">
+        <DrawerBody className="w-80" py={12} bg="#F2EEED">
           {children}
         </DrawerBody>
         <DrawerCloseTrigger color="black" />

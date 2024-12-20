@@ -34,21 +34,30 @@ function findNearestPointOnLine(point: Position, lineCoords: Position[]): number
   return minDistance;
 }
 
+export type DistanceStats = {
+  distance: number;
+  count: number;
+  percentage: number;
+};
+
 export function findEarthquakesNearPlates(
   earthquakes: GeoJSON,
-  tectonicPlates: GeoJSON,
-  threshold: number = 500 // Distance threshold in km
-): void {
+  tectonicPlates: GeoJSON
+): DistanceStats[] {
   const features = earthquakes.features || [];
   const plateFeatures = tectonicPlates.features || [];
-  let count = 0;
-  let Earthquakecount = 0;
+  const distances = [10, 50, 100, 200, 400, 600, 1000];
+  const stats: DistanceStats[] = [];
+  const totalEarthquakes = features.length;
+  
+  // Initialize counts for each distance threshold
+  const distanceCounts = new Map<number, number>();
+  distances.forEach(d => distanceCounts.set(d, 0));
   
   features.forEach(quake => {
     if (quake.geometry.type === 'Point') {
       const quakeCoords = quake.geometry.coordinates as Position;
       let minDistance = Infinity;
-      Earthquakecount++;
       
       // Find minimum distance to any plate boundary
       plateFeatures.forEach(plate => {
@@ -58,21 +67,31 @@ export function findEarthquakesNearPlates(
           minDistance = Math.min(minDistance, distance);
         }
       });
-        
-      if (minDistance <= threshold) {
       
-        count++;
-        
-        console.log(`Séisme proche d'une plaque tectonique:`, {
-          place: quake.properties?.place,
-          magnitude: quake.properties?.mag,
-          distance: Math.round(minDistance),
-          coordinates: quakeCoords
-        });
-      }
-      
+      // Count earthquakes for each distance threshold
+      distances.forEach(threshold => {
+        if (minDistance <= threshold) {
+          distanceCounts.set(threshold, distanceCounts.get(threshold)! + 1);
+        }
+      });
     }
   });
-  console.log(count);
-  console.log(Earthquakecount-count);
+  
+  // Convert counts to stats array
+  distances.forEach(distance => {
+    const count = distanceCounts.get(distance)!;
+    stats.push({
+      distance,
+      count,
+      percentage: (count / totalEarthquakes) * 100
+    });
+  });
+  
+  // Log the results
+  console.log('Statistics par distance:');
+  stats.forEach(stat => {
+    console.log(`≤ ${stat.distance}km: ${stat.count} séismes (${stat.percentage.toFixed(1)}%)`);
+  });
+  
+  return stats;
 }

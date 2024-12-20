@@ -12,8 +12,10 @@ import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
 import tectonicData from "../utils/PB2002_boundaries.json";
-import { findEarthquakesNearPlates } from '../utils/earthquakeAnalysis';
+import { findEarthquakesNearPlates } from "../utils/earthquakeAnalysis";
 import { Feature, GeoJSON } from "geojson";
+import DistanceChart from "./DistanceChart";
+import { DistanceStats } from "../utils/earthquakeAnalysis";
 
 const SearchBox = dynamic(
   () =>
@@ -45,6 +47,7 @@ const Map = ({ earthquakes }: MapProps) => {
   }>({ startDate: "", endDate: "", place: "" });
   const [applyFilters, setApplyFilters] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [distanceStats, setDistanceStats] = useState<DistanceStats[]>([]);
 
   const { sources, layers } = useLayerAndSource(
     earthquakes,
@@ -54,24 +57,28 @@ const Map = ({ earthquakes }: MapProps) => {
   );
 
   useEffect(() => {
-    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length) return;
-    
+    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length)
+      return;
+
     const earthquakesGeoJSON = {
-      type: 'FeatureCollection',
-      features: earthquakes.map(eq => ({
-        type: 'Feature',
+      type: "FeatureCollection",
+      features: earthquakes.map((eq) => ({
+        type: "Feature",
         geometry: {
-          type: 'Point',
-          coordinates: eq.coordinates.split(',').map(Number)  
+          type: "Point",
+          coordinates: eq.coordinates.split(",").map(Number),
         },
         properties: {
           place: eq.place,
-          mag: eq.magnitude
-        }
-      }))
+          mag: eq.magnitude,
+        },
+      })),
     } as GeoJSON;
-    console.log(earthquakes);
-    findEarthquakesNearPlates(earthquakesGeoJSON, tectonicData as GeoJSON);
+    const stats = findEarthquakesNearPlates(
+      earthquakesGeoJSON,
+      tectonicData as GeoJSON
+    );
+    setDistanceStats(stats);
   }, [isMapLoaded, earthquakes]);
 
   // initialize map
@@ -244,7 +251,7 @@ const Map = ({ earthquakes }: MapProps) => {
           onClose={() => setPopupData(null)}
         />
       )}
-      <div className="absolute top-5 left-5 z-50">
+      <div className="absolute  top-5 left-5 z-50">
         <DrawerComponent>
           <>
             <SearchBox
@@ -259,11 +266,15 @@ const Map = ({ earthquakes }: MapProps) => {
             <PlacesFilter setFilters={setFilters} />
             <DateRangeFilter setFilters={setFilters} />
             <button
-              className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              className=" bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
               onClick={handleApplyFilters}
             >
               Valider les filtres
             </button>
+            <div className="bottom-4 right-4  w-full">
+              <DistanceChart data={distanceStats} />
+            </div>
+            
           </>
         </DrawerComponent>
       </div>
