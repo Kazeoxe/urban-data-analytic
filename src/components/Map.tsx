@@ -11,6 +11,11 @@ import Popup from "./Popup";
 import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
+import tectonicData from "../utils/PB2002_boundaries.json";
+import { findEarthquakesNearPlates } from "../utils/earthquakeAnalysis";
+import { Feature, GeoJSON } from "geojson";
+import DistanceChart from "./DistanceChart";
+import { DistanceStats } from "../utils/earthquakeAnalysis";
 
 const SearchBox = dynamic(
   () =>
@@ -41,8 +46,34 @@ const Map = ({ earthquakes }: MapProps) => {
     place: string;
   }>({ startDate: "", endDate: "", place: "" });
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [distanceStats, setDistanceStats] = useState<DistanceStats[]>([]);
 
   const { sources, layers, earthquakeGeoJSON } = useLayerAndSource(earthquakes);
+
+  useEffect(() => {
+    if (!isMapLoaded || !earthquakes.length || !tectonicData.features.length)
+      return;
+
+    const earthquakesGeoJSON = {
+      type: "FeatureCollection",
+      features: earthquakes.map((eq) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: eq.coordinates.split(",").map(Number),
+        },
+        properties: {
+          place: eq.place,
+          mag: eq.magnitude,
+        },
+      })),
+    } as GeoJSON;
+    const stats = findEarthquakesNearPlates(
+      earthquakesGeoJSON,
+      tectonicData as GeoJSON
+    );
+    setDistanceStats(stats);
+  }, [isMapLoaded, earthquakes]);
 
   // Initialisation de la carte
   useEffect(() => {
@@ -215,7 +246,7 @@ const handleApplyFilters = useCallback(() => {
           onClose={() => setPopupData(null)}
         />
       )}
-      <div className="absolute top-5 left-5 z-50">
+      <div className="absolute  top-5 left-5 z-50">
         <DrawerComponent>
           <>
             <SearchBox
@@ -230,11 +261,15 @@ const handleApplyFilters = useCallback(() => {
             <PlacesFilter setFilters={setFilters} />
             <DateRangeFilter setFilters={setFilters} />
             <button
-              className="absolute bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              className=" absolute bottom-[370px] right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
               onClick={handleApplyFilters}
             >
               Valider les filtres
             </button>
+            <div className="bottom-4 right-4  w-full">
+              <DistanceChart data={distanceStats} />
+            </div>
+            
           </>
         </DrawerComponent>
       </div>
