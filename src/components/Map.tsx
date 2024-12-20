@@ -11,6 +11,8 @@ import Popup from "./Popup";
 import { DateRangeFilter, PlacesFilter } from "./filters";
 import "./../app/globals.css";
 import { EarthquakeType } from "@/utils/earthquakeType";
+import tectonicData from "../utils/PB2002_boundaries.json";
+import { Feature, GeoJSON } from "geojson";
 
 const SearchBox = dynamic(
   () =>
@@ -89,7 +91,7 @@ const Map = ({ earthquakes }: MapProps) => {
     const updateMapSource = () => {
       if (!map) return;
 
-      if (map.isStyleLoaded()) {
+      map.on("load", () => {
         const sourceId = "earthquake";
 
         if (map.getSource(sourceId)) {
@@ -100,9 +102,8 @@ const Map = ({ earthquakes }: MapProps) => {
             (source as mapboxgl.GeoJSONSource).setData(
               sources.get(sourceId)!.data
             );
-            setApplyFilters(false);
           }
-        } else if (sources.get(sourceId)) {
+        } else {
           map.addSource(sourceId, sources.get(sourceId)!);
 
           layers.forEach((layer) => {
@@ -111,9 +112,29 @@ const Map = ({ earthquakes }: MapProps) => {
             }
           });
         }
-      } else {
-        map.once("styledata", updateMapSource);
-      }
+
+        if (!map.getSource("tectonic-plates")) {
+          map.addSource("tectonic-plates", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: tectonicData.features as Feature[],
+            } as GeoJSON,
+          });
+
+          // Ajouter la couche des plaques tectoniques
+          map.addLayer({
+            id: "tectonic-lines",
+            type: "line",
+            source: "tectonic-plates",
+            paint: {
+              "line-color": "#FF8C00",
+              "line-width": 2,
+              "line-opacity": 0.7,
+            },
+          });
+        }
+      });
     };
 
     updateMapSource();
