@@ -17,7 +17,7 @@ interface DrawerComponentProps {
 
 const DrawerComponent = ({ children }: DrawerComponentProps) => {
   return (
-    <DrawerRoot placement="start">
+    <DrawerRoot placement="start" size="sm">
       <DrawerBackdrop  bg="transparent"/>
       <DrawerTrigger asChild>
         <Button
@@ -37,7 +37,7 @@ const DrawerComponent = ({ children }: DrawerComponentProps) => {
         <DrawerHeader>
           <DrawerTitle></DrawerTitle>
         </DrawerHeader>
-        <DrawerBody className="w-80" py={12} bg="#F2EEED">
+        <DrawerBody py={12} bg="#F2EEED">
           {children}
         </DrawerBody>
         <DrawerCloseTrigger color="black" />

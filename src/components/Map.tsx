@@ -261,7 +261,7 @@ const handleApplyFilters = useCallback(() => {
             <PlacesFilter setFilters={setFilters} />
             <DateRangeFilter setFilters={setFilters} />
             <button
-              className=" bottom-16 right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              className=" absolute bottom-[370px] right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
               onClick={handleApplyFilters}
             >
               Valider les filtres
