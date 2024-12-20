@@ -4,9 +4,9 @@ import axios from "axios";
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const UPDATE_INTERVAL = 20000; // 60 secondes
+const UPDATE_INTERVAL = 60000; // 60 secondes
 const DATABASE_UPDATE_INTERVAL = 5; // 5 minutes
-const LIMIT_TO_RETURN = 1;
+const LIMIT_TO_RETURN = 5000;
 
 let globalUpdateInterval: any = null;
 let connectedClients = 0;
