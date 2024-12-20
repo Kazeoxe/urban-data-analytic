@@ -234,6 +234,24 @@ const handleApplyFilters = useCallback(() => {
     []
   );
 
+  const handlePlaceSelect = useCallback(
+    (place: string) => {
+      const selectedEarthquake = earthquakes.find(
+        (earthquake) => earthquake.place === place
+      );
+
+      if (selectedEarthquake) {
+        const [lng, lat] = selectedEarthquake.coordinates.split(",").map(Number);
+        mapRef.current?.flyTo({
+          center: [lng, lat],
+          essential: true,
+          zoom: 14,
+        });
+      }
+    },
+    [earthquakes]
+  );
+
   return (
     <div className="h-screen w-full">
       <div ref={mapContainer} className="h-full w-full" />
@@ -258,10 +276,10 @@ const handleApplyFilters = useCallback(() => {
             <h2 className="mt-8 text-lg text-gray-700 font-bold text-center">
               Filter
             </h2>
-            <PlacesFilter setFilters={setFilters} />
+            <PlacesFilter setFilters={setFilters} earthquakesData={earthquakes} onPlaceSelect={handlePlaceSelect} />
             <DateRangeFilter setFilters={setFilters} />
             <button
-              className=" absolute bottom-[370px] right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
+              className="mt-4 w-[30%] ml-[30%] bottom-[370px] right-5 p-2 bg-gray-900 text-white font-semibold rounded-md focus:ring-2 focus:ring-blue-300"
               onClick={handleApplyFilters}
             >
               Valider les filtres

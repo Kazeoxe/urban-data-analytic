@@ -1,17 +1,24 @@
+import { EarthquakeType } from "@/utils/earthquakeType";
 import { useState } from "react";
 
 interface FilterProps {
   setFilters: React.Dispatch<
     React.SetStateAction<{ startDate: string; endDate: string; place: string }>
   >;
+  earthquakesData?: EarthquakeType[];
+  onPlaceSelect?: (place: string) => void;
 }
 
-export const PlacesFilter: React.FC<FilterProps> = ({ setFilters }) => {
+export const PlacesFilter: React.FC<FilterProps> = ({ setFilters, earthquakesData, onPlaceSelect }) => {
   const handlePlaceChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const place = event.target.value;
     setFilters((prevFilters) => ({
       ...prevFilters,
-      place: event.target.value,
+      place,
     }));
+    if (onPlaceSelect) {
+      onPlaceSelect(place);
+    }
   };
 
   return (
@@ -25,10 +32,11 @@ export const PlacesFilter: React.FC<FilterProps> = ({ setFilters }) => {
           className="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded pl-3 pr-8 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-400 shadow-sm focus:shadow-md appearance-none cursor-pointer"
           onChange={handlePlaceChange}
         >
-          <option value="brazil">Brazil</option>
-          <option value="bucharest">Bucharest</option>
-          <option value="london">London</option>
-          <option value="washington">Washington</option>
+          {[...new Set((earthquakesData ?? []).map((earthquake) => earthquake.place))].map((place) => (
+            <option key={place} value={place}>
+              {place}
+            </option>
+          ))}
         </select>
         <svg
           xmlns="http://www.w3.org/2000/svg"

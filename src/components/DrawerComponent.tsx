@@ -18,7 +18,7 @@ interface DrawerComponentProps {
 const DrawerComponent = ({ children }: DrawerComponentProps) => {
   return (
     <DrawerRoot placement="start" size="sm">
-      <DrawerBackdrop  bg="transparent"/>
+      <DrawerBackdrop bg="transparent"/>
       <DrawerTrigger asChild>
         <Button
           variant="solid"
